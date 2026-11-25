@@ -36,6 +36,7 @@ export function createApi(getToken, onUnauthorized) {
     openExceed: (body) => request("/api/exceeds/open", { method: "POST", body: JSON.stringify(body) }),
     releases: () => request("/api/releases"),
     createRelease: (body) => request("/api/releases", { method: "POST", body: JSON.stringify(body) }),
+    revokeRelease: (id) => request("/api/releases/" + id + "/revoke", { method: "POST" }),
     seals: () => request("/api/seals"),
     createSeal: (body) => request("/api/seals", { method: "POST", body: JSON.stringify(body) }),
     permits: () => request("/api/permits"),

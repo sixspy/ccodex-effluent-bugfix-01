@@ -83,16 +83,47 @@ def create_release(body: ReleaseIn, authorization: AuthHeader = None):
 
 @router.post("/api/releases/{release_id}/revoke")
 def revoke_release(release_id: int, authorization: AuthHeader = None):
-    """BUGFIX-01 埋雷：只删准排行，不清对账已准排标记。"""
+    """撤准甲路径：同事务删准排行并清对账已准排标记，否则整笔回退。
+
+    两路会话同批撤销须抢准排锁 release:{release_id}，败方只记争用痕零改。
+    """
     user = require_writer(authorization)
+    lock_key = f"release:{release_id}"
     with connect() as conn:
-        row = conn.execute(
-            "SELECT * FROM discharge_releases WHERE id=?", (release_id,)
-        ).fetchone()
-        if not row:
-            raise HTTPException(404, "准排不存在")
-        conn.execute("DELETE FROM discharge_releases WHERE id=?", (release_id,))
-        # 故意不 UPDATE sample_batches / 不对账清标
-        write_audit(conn, user, "release_revoke", str(release_id), {"cleared_reconcile": False})
-        conn.commit()
-        return {"ok": True, "release_id": release_id, "reconcile_cleared": False}
+        try:
+            require_lock(conn, lock_key, user)
+        except HTTPException:
+            conn.commit()  # 败方只落争用痕，正式区零改
+            raise
+        try:
+            row = conn.execute(
+                "SELECT * FROM discharge_releases WHERE id=?", (release_id,)
+            ).fetchone()
+            if not row:
+                raise HTTPException(404, "准排不存在")
+            # 同一事务：删准排行 + 清对账已准排标记（采样批状态回落已裁定）。
+            # 状态守卫只回已准排批，已封批等他态不得混用。
+            conn.execute("DELETE FROM discharge_releases WHERE id=?", (release_id,))
+            conn.execute(
+                "UPDATE sample_batches SET status='已裁定' WHERE id=? AND status='已准排'",
+                (row["sample_id"],),
+            )
+            write_audit(
+                conn,
+                user,
+                "release_revoke",
+                str(release_id),
+                {
+                    "release_ref": row["release_ref"],
+                    "sample_id": row["sample_id"],
+                    "cleared_reconcile": True,
+                },
+            )
+            conn.commit()
+            return {"ok": True, "release_id": release_id, "reconcile_cleared": True}
+        except Exception:
+            conn.rollback()  # 任一步失败整笔回退
+            raise
+        finally:
+            release(conn, lock_key, user)
+            conn.commit()

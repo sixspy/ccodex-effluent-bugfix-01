@@ -165,6 +165,7 @@ createApp({
     }
     async function closeExceed(id) { await flash(() => api.closeExceed({ hold_id: id, note: "页面闭环" })); }
     async function createRelease() { await flash(() => api.createRelease(releaseForm.value)); }
+    async function revokeRelease(id) { await flash(() => api.revokeRelease(id)); }
     async function createSeal() {
       await flash(() => api.createSeal({
         sample_id: sealForm.value.sample_id,
@@ -225,7 +226,7 @@ createApp({
       lineageForm, labForm, sludgeForm, releasableSamples, sealableSamples,
       login, logout, refresh, statusClass, sampleClass, fmtMetrics,
       loadPlant, loadSample, createPlant, createOutfall, createSample,
-      closeExceed, createRelease, createSeal, createPermit, createLineage,
+      closeExceed, createRelease, revokeRelease, createSeal, createPermit, createLineage,
       loadReconcile, loadReconcileOne, loadProof, enqueueLab, enqueueSludge,
     };
   },

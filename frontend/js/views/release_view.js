@@ -3,11 +3,12 @@ export const releaseViewTemplate = `
     <div class="panel">
       <h3>准排放记录</h3>
       <table>
-        <thead><tr><th>准排号</th><th>采样</th><th>口</th><th>值班</th><th>时间</th></tr></thead>
+        <thead><tr><th>准排号</th><th>采样</th><th>口</th><th>值班</th><th>时间</th><th></th></tr></thead>
         <tbody>
           <tr v-for="r in releases" :key="r.id">
             <td>{{ r.release_ref }}</td><td>{{ r.sample_code }}</td><td>{{ r.outfall_code }}</td>
             <td>{{ r.officer }}</td><td>{{ r.released_at }}</td>
+            <td><button class="secondary" style="width:auto;margin:0" @click="revokeRelease(r.id)">撤销</button></td>
           </tr>
         </tbody>
       </table>

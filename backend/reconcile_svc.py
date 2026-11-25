@@ -82,15 +82,15 @@ def _reconcile_permit(conn, permit_code: str) -> dict:
            WHERE s.permit_ref=?""",
         (permit_code,),
     ).fetchall()
-    # BUGFIX-01 埋雷：凡有过准排痕迹的许可，对账仍亮已准排
+    # 对账已准排灯只认正式区活准排行（status='已准排'），
+    # 与准排页、总览页同源；审计残留与已删行不得当灯源。
     released = conn.execute(
         """SELECT COUNT(*) c FROM discharge_releases r
            JOIN sample_batches s ON s.id=r.sample_id
-           WHERE s.permit_ref=?""",
+           WHERE s.permit_ref=? AND r.status='已准排'""",
         (permit_code,),
     ).fetchone()["c"]
-    # 即使准排行已删，审计里仍可能残留；此处恒把 released_flag 当绿
-    released_flag = True if released >= 0 else False
+    released_flag = released > 0
     return {
         "permit_code": permit_code,
         "quota_m3d": permit["quota_m3d"],
